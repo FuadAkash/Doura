@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Place
@@ -105,6 +106,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.akash.doura.about.AboutSheet
 import com.akash.doura.board.BoardUiState
 import com.akash.doura.board.DepartureBoardSheet
 import com.akash.doura.board.DepartureBoardViewModel
@@ -250,6 +252,7 @@ fun HomeScreen() = ScreenBackground {
         if (LocalInspectionMode.current) null else viewModel()
     val journeyState = journeyViewModel?.state ?: JourneyState()
     var openJourney by remember { mutableStateOf<Journey?>(null) }
+    var showAbout by remember { mutableStateOf(false) }
 
     // "Use my location" inside the picker: wait for the nearby result, take the
     // closest stop, and drop it into whichever field is open.
@@ -285,6 +288,19 @@ fun HomeScreen() = ScreenBackground {
                         color = Doura.Green,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
+                    )
+                },
+                actions = {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "About Doura",
+                        tint = Doura.TextMuted,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable { showAbout = true }
+                            .padding(9.dp)
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -496,6 +512,10 @@ fun HomeScreen() = ScreenBackground {
                 showTimeSheet = false
             }
         )
+    }
+
+    if (showAbout) {
+        AboutSheet(onDismiss = { showAbout = false })
     }
 
     openJourney?.let { journey ->
