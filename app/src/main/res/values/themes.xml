@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Replace app/src/main/res/values/themes.xml with this file.
+
+    The light bar showing "Doura" at the top of the app is the ActionBar.
+    It is drawn by the activity's theme, not by any Compose code, and it
+    takes its title from android:label in the manifest. The only way to
+    remove it is a NoActionBar parent theme.
+
+    Also delete app/src/main/res/values-night/themes.xml if it exists —
+    Doura is dark in both modes, so a second variant only reintroduces
+    the light version in one of them.
+-->
+<resources>
+
+    <!-- The real app theme. NoActionBar is the important part. -->
+    <style name="Theme.Doura" parent="android:Theme.Material.NoActionBar">
+        <!-- Transparent bars so the background image runs edge to edge.
+             SystemBarStyle.dark() in MainActivity forces light icons. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/black</item>
+
+        <!-- Belt and braces: some device OEM themes re-add a title bar. -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <!-- Splash theme. postSplashScreenTheme hands off to Theme.Doura above. -->
+    <style name="Theme.Doura.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/doura_splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Doura</item>
+    </style>
+
+</resources>

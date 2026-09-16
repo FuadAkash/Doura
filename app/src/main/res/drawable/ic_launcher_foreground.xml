@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Doura launcher foreground. 108x108dp adaptive-icon canvas, artwork
+    inside the 18..90 safe zone so no launcher mask crops it.
+
+    Also reused as the splash icon so both use the same vector at every
+    density and there is nothing to keep in sync.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- three motion streaks behind the figure -->
+    <path
+        android:pathData="M16,48 L34,50"
+        android:strokeColor="#8027C46B"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M12,62 L32,64"
+        android:strokeColor="#8027C46B"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M18,76 L36,77"
+        android:strokeColor="#8027C46B"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+    <!-- head -->
+    <path
+        android:pathData="M64,30 m-6.5,0 a6.5,6.5 0 1,0 13,0 a6.5,6.5 0 1,0 -13,0"
+        android:fillColor="#27C46B" />
+
+    <!-- neck -->
+    <path
+        android:pathData="M61,34 L67,34 L67,38 L61,38 Z"
+        android:fillColor="#27C46B" />
+
+    <!-- torso leaning forward -->
+    <path
+        android:pathData="M55,38 L72,38 L76,60 L58,62 Z"
+        android:fillColor="#27C46B" />
+
+    <!-- tie streaming back -->
+    <path
+        android:pathData="M56,40 L60,40 L46,44 L40,46 L34,44 L42,42 Z"
+        android:fillColor="#F5F5F5" />
+
+    <!-- front arm, fist raised -->
+    <path
+        android:pathData="M72,40 L82,36 L84,44 L74,46 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M82,36 L82,28 L88,28 L86,38 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M85,27 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0"
+        android:fillColor="#27C46B" />
+
+    <!-- back arm with briefcase -->
+    <path
+        android:pathData="M55,40 L46,52 L50,56 L58,44 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M46,52 L44,62 L50,62 L52,54 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M38,62 L56,62 L56,74 L38,74 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M44,60 L50,60 L50,62 L44,62 Z"
+        android:fillColor="#27C46B" />
+
+    <!-- front leg kicking forward -->
+    <path
+        android:pathData="M72,60 L80,62 L86,78 L78,80 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M82,78 L86,80 L90,94 L84,94 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M80,92 L96,92 L96,98 L80,98 Z"
+        android:fillColor="#27C46B" />
+
+    <!-- back leg extended behind -->
+    <path
+        android:pathData="M58,62 L66,62 L58,78 L50,76 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M50,76 L56,76 L42,88 L38,84 Z"
+        android:fillColor="#27C46B" />
+    <path
+        android:pathData="M32,84 L48,84 L48,90 L32,90 Z"
+        android:fillColor="#27C46B" />
+</vector>
