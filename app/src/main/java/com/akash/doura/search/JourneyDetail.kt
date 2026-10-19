@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.ExpandMore
@@ -61,8 +63,11 @@ private val GUTTER = 34.dp
 fun JourneyDetailSheet(
     journey: Journey,
     platforms: Map<Int, String> = emptyMap(),
+    canRemind: Boolean = false,
+    onRemind: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    var reminded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val now = remember { System.currentTimeMillis() }
 
@@ -81,6 +86,28 @@ fun JourneyDetailSheet(
                 .navigationBarsPadding()
         ) {
             Header(journey)
+            if (canRemind) {
+                Spacer(Modifier.height(14.dp))
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, Doura.Green, RoundedCornerShape(14.dp))
+                        .background(Doura.GreenDeep.copy(alpha = if (reminded) 0.7f else 0.35f))
+                        .clickable(enabled = !reminded) { reminded = true; onRemind() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (reminded) Icons.Default.Check else Icons.Default.Notifications,
+                        null, tint = Doura.Green, modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (reminded) "Reminders set: 5 min, 2 min, now" else "Remind me: 5 min, 2 min, now",
+                        color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Medium
+                    )
+                }
+            }
             Spacer(Modifier.height(18.dp))
             TicketRow(journey)
             Spacer(Modifier.height(20.dp))

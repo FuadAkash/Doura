@@ -31,6 +31,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.platform.LocalContext
+import com.akash.doura.reminders.*
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -123,6 +126,7 @@ import com.akash.doura.search.journeySection
 import com.akash.doura.search.JourneyDetailSheet
 import com.akash.doura.search.JourneyDetailViewModel
 import com.akash.doura.data.Journey
+import com.akash.doura.data.LegKind
 import com.akash.doura.ui.theme.DouraTheme
 import java.util.Calendar
 import java.util.Locale
@@ -254,6 +258,21 @@ fun HomeScreen() = ScreenBackground {
     var openJourney by remember { mutableStateOf<Journey?>(null) }
     var showAbout by remember { mutableStateOf(false) }
 
+    // Navigation + reminders
+    val context = LocalContext.current
+    var tab by remember { mutableStateOf(AppTab.SEARCH) }
+    val historyStore = remember { HistoryStore(context) }
+    var history by remember { mutableStateOf(historyStore.all()) }
+    val notifyGate = rememberNotifyGate()
+
+    // Set-journey page keeps its own route + time so it never clobbers the search form.
+    var setFrom by remember { mutableStateOf("") }
+    var setTo by remember { mutableStateOf("") }
+    var setDay by remember { mutableStateOf(0) }
+    var setMinutes by remember { mutableStateOf((nowInMinutes() + 30) % 1440) }
+    var pickerForSet by remember { mutableStateOf(false) }
+    var showSetTime by remember { mutableStateOf(false) }
+
     // "Use my location" inside the picker: wait for the nearby result, take the
     // closest stop, and drop it into whichever field is open.
     LaunchedEffect(nearbyState.stops, fillFromLocation) {
@@ -315,152 +334,198 @@ fun HomeScreen() = ScreenBackground {
         },
         modifier = Modifier.fillMaxSize()
     ) { inner ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                ModeSwitch(
-                    mode = mode,
-                    onModeChange = { mode = it }
-                )
-            }
-
-            if (mode == SearchMode.ROUTE) {
-                item {
-                    RouteCard(
-                        from = from,
-                        to = to,
-                        onPickFrom = { picker = PickerTarget.FROM },
-                        onPickTo = { picker = PickerTarget.TO },
-                        onClearFrom = { from = ""; fromId = null },
-                        onClearTo = { to = ""; toId = null },
-                        onSwap = {
-                            val oldName = from
-                            val oldId = fromId
-                            from = to
-                            fromId = toId
-                            to = oldName
-                            toId = oldId
-                        }
-                    )
-                }
-
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PillButton(
-                            icon = Icons.Default.Schedule,
-                            label = if (usingNow) "Leave now" else "${dayLabel(dayOffset)}, ${formatTime(departAt)}",
-                            modifier = Modifier.weight(1f),
-                            onClick = { showTimeSheet = true }
-                        )
-                        PillButton(
-                            icon = null,
-                            iconContent = { TypeGlyph(TransportType.TRAIN, Doura.TextPrimary, 18.dp) },
-                            label = typeSummary(selectedTypes),
-                            modifier = Modifier.weight(1f),
-                            onClick = { showTypeSheet = true }
+        Box(Modifier.fillMaxSize()) {
+            when (tab) {
+                AppTab.SEARCH -> LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(inner),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 120.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    item {
+                        ModeSwitch(
+                            mode = mode,
+                            onModeChange = { mode = it }
                         )
                     }
-                }
 
-                item {
-                    val anythingToClear = from.isNotBlank() || to.isNotBlank() ||
-                            selectedTypes.isNotEmpty() || fewerChanges || !usingNow || journeyState.searched
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = {
-                                val origin = fromId
-                                val destination = toId
-                                if (origin != null && destination != null) {
-                                    journeyViewModel?.search(
-                                        originId = origin,
-                                        destId = destination,
-                                        originName = from,
-                                        destName = to,
-                                        departMillis = departureMillis(dayOffset, departAt),
-                                        types = selectedTypes,
-                                        maxChange = if (fewerChanges) 1 else null
-                                    )
+                    if (mode == SearchMode.ROUTE) {
+                        item {
+                            RouteCard(
+                                from = from,
+                                to = to,
+                                onPickFrom = { picker = PickerTarget.FROM },
+                                onPickTo = { picker = PickerTarget.TO },
+                                onClearFrom = { from = ""; fromId = null },
+                                onClearTo = { to = ""; toId = null },
+                                onSwap = {
+                                    val oldName = from
+                                    val oldId = fromId
+                                    from = to
+                                    fromId = toId
+                                    to = oldName
+                                    toId = oldId
                                 }
-                            },
-                            enabled = fromId != null && toId != null && !journeyState.loading,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Doura.Green,
-                                contentColor = Color.White,
-                                disabledContainerColor = Doura.GreenDeep,
-                                disabledContentColor = Color.White.copy(alpha = 0.55f)
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(54.dp)
-                        ) {
-                            Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Search", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            )
                         }
 
-                        if (anythingToClear) {
-                            Box(
-                                modifier = Modifier
-                                    .height(54.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .border(1.dp, Doura.Green, RoundedCornerShape(16.dp))
-                                    .clickable {
-                                        from = ""
-                                        to = ""
-                                        fromId = null
-                                        toId = null
-                                        selectedTypes = emptySet()
-                                        fewerChanges = false
-                                        departAt = nowInMinutes()
-                                        dayOffset = 0
-                                        usingNow = true
-                                        openJourney = null
-                                        journeyViewModel?.reset()
-                                    }
-                                    .padding(horizontal = 20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Clear",
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                PillButton(
+                                    icon = Icons.Default.Schedule,
+                                    label = if (usingNow) "Leave now" else "${dayLabel(dayOffset)}, ${formatTime(departAt)}",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { showTimeSheet = true }
+                                )
+                                PillButton(
+                                    icon = null,
+                                    iconContent = { TypeGlyph(TransportType.TRAIN, Doura.TextPrimary, 18.dp) },
+                                    label = typeSummary(selectedTypes),
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { showTypeSheet = true }
                                 )
                             }
                         }
+
+                        item {
+                            val anythingToClear = from.isNotBlank() || to.isNotBlank() ||
+                                    selectedTypes.isNotEmpty() || fewerChanges || !usingNow || journeyState.searched
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(
+                                    onClick = {
+                                        val origin = fromId
+                                        val destination = toId
+                                        if (origin != null && destination != null) {
+                                            historyStore.record(origin, destination, from, to)
+                                            history = historyStore.all()
+                                            journeyViewModel?.search(
+                                                originId = origin,
+                                                destId = destination,
+                                                originName = from,
+                                                destName = to,
+                                                departMillis = departureMillis(dayOffset, departAt),
+                                                types = selectedTypes,
+                                                maxChange = if (fewerChanges) 1 else null
+                                            )
+                                        }
+                                    },
+                                    enabled = fromId != null && toId != null && !journeyState.loading,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Doura.Green,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = Doura.GreenDeep,
+                                        disabledContentColor = Color.White.copy(alpha = 0.55f)
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(54.dp)
+                                ) {
+                                    Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Search", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                }
+
+                                if (anythingToClear) {
+                                    Box(
+                                        modifier = Modifier
+                                            .height(54.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .border(1.dp, Doura.Green, RoundedCornerShape(16.dp))
+                                            .clickable {
+                                                from = ""
+                                                to = ""
+                                                fromId = null
+                                                toId = null
+                                                selectedTypes = emptySet()
+                                                fewerChanges = false
+                                                departAt = nowInMinutes()
+                                                dayOffset = 0
+                                                usingNow = true
+                                                openJourney = null
+                                                journeyViewModel?.reset()
+                                            }
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "Clear",
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!journeyState.searched) {
+                            item {
+                                Text(
+                                    "Pick a start and a destination to see live journeys across SL, UL and the rest of Sweden.",
+                                    color = Doura.TextMuted,
+                                    fontSize = 13.5.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 20.dp)
+                                )
+                            }
+                        } else {
+                            journeySection(
+                                state = journeyState,
+                                onLoadMore = { journeyViewModel?.loadMore() },
+                                onOpen = { openJourney = it }
+                            )
+                        }
+                    } else {
+                        nearestStationSection(
+                            state = nearbyState,
+                            onLocate = locate,
+                            onStopPicked = { stop -> boardViewModel?.open(stop.id, stop.name) }
+                        )
                     }
                 }
 
-                if (!journeyState.searched) {
-                    item {
-                        Text(
-                            "Pick a start and a destination to see live journeys across SL, UL and the rest of Sweden.",
-                            color = Doura.TextMuted,
-                            fontSize = 13.5.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 20.dp)
+                AppTab.SET -> SetJourneyPage(
+                    from = setFrom, to = setTo, dayOffset = setDay, minutes = setMinutes,
+                    onPickFrom = { pickerForSet = true; picker = PickerTarget.FROM },
+                    onPickTo = { pickerForSet = true; picker = PickerTarget.TO },
+                    onClearFrom = { setFrom = "" },
+                    onClearTo = { setTo = "" },
+                    onSwap = { val t = setFrom; setFrom = setTo; setTo = t },
+                    onPickTime = { showSetTime = true },
+                    modifier = Modifier.fillMaxSize().padding(inner)
+                )
+
+                AppTab.HISTORY -> HistoryPage(
+                    entries = history,
+                    onPick = { e ->
+                        // Re-run from the current moment, not the time it was first searched.
+                        from = e.originName; fromId = e.originId
+                        to = e.destName; toId = e.destId
+                        usingNow = true; dayOffset = 0; departAt = nowInMinutes()
+                        tab = AppTab.SEARCH
+                        journeyViewModel?.search(
+                            originId = e.originId, destId = e.destId,
+                            originName = e.originName, destName = e.destName,
+                            departMillis = System.currentTimeMillis(),
+                            types = selectedTypes,
+                            maxChange = if (fewerChanges) 1 else null
                         )
-                    }
-                } else {
-                    journeySection(
-                        state = journeyState,
-                        onLoadMore = { journeyViewModel?.loadMore() },
-                        onOpen = { openJourney = it }
-                    )
-                }
-            } else {
-                nearestStationSection(
-                    state = nearbyState,
-                    onLocate = locate,
-                    onStopPicked = { stop -> boardViewModel?.open(stop.id, stop.name) }
+                        historyStore.record(e.originId, e.destId, e.originName, e.destName)
+                        history = historyStore.all()
+                    },
+                    onDelete = { historyStore.remove(it); history = historyStore.all() },
+                    onClearAll = { historyStore.clear(); history = historyStore.all() },
+                    modifier = Modifier.fillMaxSize().padding(inner)
                 )
             }
+
+            DouraBottomBar(
+                selected = tab,
+                onSelect = { tab = it },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 
@@ -475,19 +540,23 @@ fun HomeScreen() = ScreenBackground {
                 locate()
             },
             onPick = { hit ->
-                if (target == PickerTarget.FROM) {
+                if (pickerForSet) {
+                    if (target == PickerTarget.FROM) setFrom = hit.name else setTo = hit.name
+                } else if (target == PickerTarget.FROM) {
                     from = hit.name
                     fromId = hit.id
                 } else {
                     to = hit.name
                     toId = hit.id
                 }
+                pickerForSet = false
                 stationViewModel?.remember(hit)
                 stationViewModel?.clear()
                 picker = null
             },
             onDismiss = {
                 fillFromLocation = false
+                pickerForSet = false
                 stationViewModel?.clear()
                 picker = null
             }
@@ -514,6 +583,18 @@ fun HomeScreen() = ScreenBackground {
         )
     }
 
+    if (showSetTime) {
+        TimeSheet(
+            initialMinutes = setMinutes,
+            initialDayOffset = setDay,
+            onDismiss = { showSetTime = false },
+            onNow = {
+                setMinutes = nowInMinutes(); setDay = 0; showSetTime = false
+            },
+            onConfirm = { m, d -> setMinutes = m; setDay = d; showSetTime = false }
+        )
+    }
+
     if (showAbout) {
         AboutSheet(onDismiss = { showAbout = false })
     }
@@ -526,6 +607,27 @@ fun HomeScreen() = ScreenBackground {
         JourneyDetailSheet(
             journey = journey,
             platforms = detailViewModel?.platforms ?: emptyMap(),
+            canRemind = journey.departMillis > System.currentTimeMillis(),
+            onRemind = {
+                notifyGate {
+                    val count = ReminderScheduler.schedule(
+                        context,
+                        Reminder(
+                            id = "j-${journey.key}-${journey.departMillis}",
+                            originName = journey.originName,
+                            destName = journey.destinationName,
+                            departMillis = journey.departMillis,
+                            offsets = JOURNEY_OFFSETS,
+                            line = journey.legs.firstOrNull { it.kind == LegKind.VEHICLE }?.lineName
+                        )
+                    )
+                    Toast.makeText(
+                        context,
+                        if (count > 0) "Reminders set" else "Departure is too close for reminders",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
             onDismiss = { openJourney = null }
         )
     }
@@ -619,7 +721,7 @@ private fun ModeTab(
  * -------------------------------------------------------------------------- */
 
 @Composable
-private fun RouteCard(
+internal fun RouteCard(
     from: String,
     to: String,
     onPickFrom: () -> Unit,
@@ -742,7 +844,7 @@ private fun StationSlot(
  * -------------------------------------------------------------------------- */
 
 @Composable
-private fun PillButton(
+internal fun PillButton(
     icon: ImageVector?,
     label: String,
     modifier: Modifier = Modifier,
@@ -784,7 +886,7 @@ private fun PillButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeSheet(
+internal fun TimeSheet(
     initialMinutes: Int,
     initialDayOffset: Int,
     onDismiss: () -> Unit,
@@ -1137,15 +1239,15 @@ private fun OutlinedAction(text: String, modifier: Modifier = Modifier, onClick:
  * Static data + helpers (replace with the real repository later)
  * -------------------------------------------------------------------------- */
 
-private fun nowInMinutes(): Int {
+internal fun nowInMinutes(): Int {
     val c = Calendar.getInstance()
     return c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
 }
 
-private fun formatTime(minutes: Int): String =
+internal fun formatTime(minutes: Int): String =
     String.format(Locale.getDefault(), "%02d:%02d", (minutes / 60) % 24, minutes % 60)
 
-private fun dayLabel(offset: Int): String = when (offset) {
+internal fun dayLabel(offset: Int): String = when (offset) {
     0 -> "Today"
     1 -> "Tomorrow"
     else -> {
@@ -1166,7 +1268,7 @@ private fun daysFromToday(millis: Long): Int {
 }
 
 /** Turns the picked day offset + minute-of-day into an epoch timestamp. */
-private fun departureMillis(dayOffset: Int, minutesOfDay: Int): Long =
+internal fun departureMillis(dayOffset: Int, minutesOfDay: Int): Long =
     Calendar.getInstance().apply {
         add(Calendar.DAY_OF_YEAR, dayOffset)
         set(Calendar.HOUR_OF_DAY, minutesOfDay / 60)
